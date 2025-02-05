@@ -10,7 +10,7 @@ use serde_derive::{Deserialize, Serialize};
 #[allow(dead_code)]
 type Result<T> = std::result::Result<T, AppError>;
 
-#[derive(Queryable, Selectable, Identifiable, Serialize)]
+#[derive(Queryable, Selectable, Identifiable, Serialize, Debug, PartialEq)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(table_name = posts)]
 pub struct Post {
@@ -19,7 +19,7 @@ pub struct Post {
     pub body: String,
 }
 #[derive(Insertable, Serialize, Deserialize)]
-#[table_name = "posts"]
+#[diesel(table_name = posts)]
 pub struct NewPost {
     pub title: String,
     pub body: String,
@@ -41,7 +41,6 @@ pub async fn create_post(
     conn: web::Data<Pool<ConnectionManager<PgConnection>>>,
     new_posts: web::Json<Vec<NewPost>>,
 ) -> HttpResponse {
-    println!("kjhfkjahfkjahkjfh");
     use crate::schema::posts::dsl::*;
     let connection = &mut conn.get().expect("Couldn't get db connection from pool");
 
@@ -56,5 +55,43 @@ pub async fn create_post(
             println!("{:?}", e);
             AppError::from(e).error_response()
         }
+    }
+}
+
+#[get("/{id}")]
+pub async fn get_post_by_id(
+    conn: web::Data<Pool<ConnectionManager<PgConnection>>>,
+    post_id: web::Path<i64>,
+) -> HttpResponse {
+    use crate::schema::posts::dsl::*;
+    let connection = &mut conn.get().expect("Couldn't get db connection from pool");
+
+    let result = posts
+        .find(post_id.into_inner())
+        .select(Post::as_select())
+        .first::<Post>(connection);
+    match result {
+        Ok(response) => HttpResponse::Ok().json(response),
+        Err(e) => AppError::from(e).error_response(),
+    }
+}
+
+#[post("/update_post/{id}")]
+pub async fn update_post(
+    conn: web::Data<Pool<ConnectionManager<PgConnection>>>,
+    post_id: web::Path<i64>,
+    new_post: web::Json<NewPost>,
+) -> HttpResponse {
+    use crate::schema::posts::dsl::*;
+    let connection = &mut conn.get().expect("Couldn't get db connection from pool");
+
+    let result = diesel::update(Post::table().find(post_id.into_inner()))
+        .set((title.eq(&new_post.title), body.eq(&new_post.body)))
+        .returning(Post::as_returning())
+        .get_result(connection);
+
+    match result {
+        Ok(response) => HttpResponse::Ok().json(response),
+        Err(e) => AppError::from(e).error_response(),
     }
 }

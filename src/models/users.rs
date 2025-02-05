@@ -8,7 +8,7 @@ type Result<T> = std::result::Result<T, AppError>;
 
 #[derive(Queryable, Identifiable, Serialize, Debug, PartialEq, Selectable)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-#[table_name = "users"]
+#[diesel(table_name = users)]
 pub struct User {
     pub id: i64,
     pub user_name: String,
@@ -16,7 +16,7 @@ pub struct User {
 }
 
 #[derive(Insertable)]
-#[table_name = "users"]
+#[diesel(table_name = users)]
 pub struct NewUser<'a> {
     pub user_name: &'a str,
     pub email: &'a str,
