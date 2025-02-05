@@ -10,11 +10,13 @@ mod schema;
 
 use std::io::Result;
 
-use actix_web::{middleware, App, HttpServer};
+use actix_web::error::JsonPayloadError;
+use actix_web::{web, App, HttpServer};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
+use errors::AppError;
 
-// type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
+// type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
 pub struct Blog {
     port: u16,
 }
@@ -29,18 +31,27 @@ impl Blog {
         let pool = r2d2::Pool::builder()
             .build(manager)
             .expect("Failed to create pool.");
-
         let address = format!("127.0.0.1:{}", self.port);
         println!("Starting server at {}", address);
         HttpServer::new(move || {
             App::new()
-                .app_data(pool.clone())
-                .wrap(middleware::Logger::default())
+                .app_data(web::JsonConfig::default().error_handler(json_error_handler))
+                .app_data(web::Data::new(pool.clone()))
+                // .wrap(middleware::Logger::default())
                 .configure(routes::users::configure)
+                .configure(routes::posts::configure)
         })
         .bind(address)?
         .workers(8)
         .run()
         .await
     }
+}
+
+pub fn json_error_handler(
+    err: JsonPayloadError,
+    _req: &actix_web::HttpRequest,
+) -> actix_web::Error {
+    let error_message = AppError::from(err);
+    error_message.into()
 }

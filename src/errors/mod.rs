@@ -1,3 +1,4 @@
+use actix_web::error::JsonPayloadError;
 use actix_web::HttpResponse;
 use diesel::result::DatabaseErrorKind::UniqueViolation;
 use diesel::result::Error::{DatabaseError, NotFound};
@@ -11,6 +12,7 @@ pub enum AppError {
     RecordNotFound,
     DatabaseError(diesel::result::Error),
     OperationCanceled,
+    JsonPayloadError(String),
 }
 
 #[derive(Debug, Serialize)]
@@ -25,6 +27,7 @@ impl fmt::Display for AppError {
             AppError::RecordNotFound => write!(f, "Record not found"),
             AppError::DatabaseError(ref err) => write!(f, "Database error: {}", err),
             AppError::OperationCanceled => write!(f, "Operation canceled"),
+            AppError::JsonPayloadError(ref err) => write!(f, "Invalid JSON payload: {}", err),
         }
     }
 }
@@ -35,6 +38,14 @@ impl From<diesel::result::Error> for AppError {
             DatabaseError(UniqueViolation, _) => AppError::RecordAlreadyExists,
             NotFound => AppError::RecordNotFound,
             _ => AppError::DatabaseError(error),
+        }
+    }
+}
+
+impl From<JsonPayloadError> for AppError {
+    fn from(error: JsonPayloadError) -> Self {
+        match error {
+            _ => AppError::JsonPayloadError(error.to_string()),
         }
     }
 }
