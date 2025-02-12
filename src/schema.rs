@@ -6,6 +6,7 @@ diesel::table! {
         #[max_length = 255]
         title -> Varchar,
         body -> Text,
+        user_id -> Int8,
     }
 }
 
@@ -18,6 +19,8 @@ diesel::table! {
         email -> Varchar,
     }
 }
+
+diesel::joinable!(posts -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     posts,

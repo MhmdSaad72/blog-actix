@@ -1,12 +1,12 @@
 use actix_web::web::{self, ServiceConfig};
 
+use crate::models::users::{create_user, get_all_users, handle_json};
+
 pub fn configure(cfg: &mut ServiceConfig) {
     cfg.service(
-        web::scope("/users")
-            .route("", web::post().to(|| async { "Create user" }))
-            .route("", web::get().to(|| async { "List users" }))
-            .route("/{id}", web::get().to(|| async { "Get user by id" }))
-            .route("/{id}", web::put().to(|| async { "Update user" }))
-            .route("/{id}", web::delete().to(|| async { "Delete user" })),
+        web::scope("/api/users")
+            .service(create_user)
+            .service(get_all_users)
+            .service(handle_json),
     );
 }

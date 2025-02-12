@@ -1,4 +1,4 @@
-use actix_web::error::JsonPayloadError;
+use actix_web::error::{BlockingError, JsonPayloadError};
 use actix_web::HttpResponse;
 use diesel::result::DatabaseErrorKind::UniqueViolation;
 use diesel::result::Error::{DatabaseError, NotFound};
@@ -13,6 +13,7 @@ pub enum AppError {
     DatabaseError(diesel::result::Error),
     OperationCanceled,
     JsonPayloadError(String),
+    BlockingError,
 }
 
 #[derive(Debug, Serialize)]
@@ -28,6 +29,7 @@ impl fmt::Display for AppError {
             AppError::DatabaseError(ref err) => write!(f, "Database error: {}", err),
             AppError::OperationCanceled => write!(f, "Operation canceled"),
             AppError::JsonPayloadError(ref err) => write!(f, "Invalid JSON payload: {}", err),
+            AppError::BlockingError => write!(f, "Blocking Error"),
         }
     }
 }
@@ -38,6 +40,14 @@ impl From<diesel::result::Error> for AppError {
             DatabaseError(UniqueViolation, _) => AppError::RecordAlreadyExists,
             NotFound => AppError::RecordNotFound,
             _ => AppError::DatabaseError(error),
+        }
+    }
+}
+
+impl From<BlockingError> for AppError {
+    fn from(error: BlockingError) -> Self {
+        match error {
+            _ => AppError::BlockingError,
         }
     }
 }
@@ -56,6 +66,7 @@ impl actix_web::error::ResponseError for AppError {
         let mut builder = match self {
             AppError::RecordAlreadyExists => HttpResponse::BadRequest(),
             AppError::RecordNotFound => HttpResponse::NotFound(),
+            AppError::BlockingError => HttpResponse::ExpectationFailed(),
             _ => HttpResponse::InternalServerError(),
         };
         builder.json(ErrorResponse { err })

@@ -11,12 +11,12 @@ mod schema;
 use std::io::Result;
 
 use actix_web::error::JsonPayloadError;
-use actix_web::{web, App, HttpServer};
+use actix_web::{middleware, web, App, HttpServer};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use errors::AppError;
 
-// type Pool = r2d2::Pool<ConnectionManager<PgConnection>>;
+pub type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 pub struct Blog {
     port: u16,
 }
@@ -37,7 +37,7 @@ impl Blog {
             App::new()
                 .app_data(web::JsonConfig::default().error_handler(json_error_handler))
                 .app_data(web::Data::new(pool.clone()))
-                // .wrap(middleware::Logger::default())
+                .wrap(middleware::Logger::default())
                 .configure(routes::users::configure)
                 .configure(routes::posts::configure)
         })
